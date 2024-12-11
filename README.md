@@ -1,0 +1,2 @@
+# galga-batocera
+Batocera customizations 
