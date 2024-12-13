@@ -5,6 +5,8 @@ import select
 import os
 import time
 
+MERGE_ENABLED_FILE = "/tmp/merge_controller_enabled"
+
 # Device paths
 dev1_path = '/dev/input/event0'
 dev2_path = '/dev/input/event1'
@@ -56,6 +58,14 @@ def reset_virtual_controllers():
     ui_player2 = UInput(capabilities_player2, name="Virtual Controller P2", version=0x3)
     print("Virtual controllers reset.")
 
+def check_merge_enabled():
+  try:
+    with open(MERGE_ENABLED_FILE, "r") as f:
+      return f.read().strip() == "True"
+  except FileNotFoundError:
+    return False
+
+
 # Create virtual controllers
 ui_player1 = UInput(capabilities_player1, name="Virtual Controller P1", version=0x3)
 ui_player2 = UInput(capabilities_player2, name="Virtual Controller P2", version=0x3)
@@ -65,6 +75,8 @@ dev1, dev2 = open_devices()
 
 try:
     while True:
+        merge_enabled = check_merge_enabled()
+        
         if not (dev1 and dev2):
             print("Devices disconnected. Reconnecting...")
             dev1, dev2 = open_devices()
@@ -85,24 +97,35 @@ try:
 
             for event in d.read():
                 print(f"Device: {d.path}, Type: {event.type}, Code: {event.code}, Value: {event.value}")
-
-                if event.type == ecodes.EV_KEY and event.code == ecodes.BTN_BASE4:
-                    if d == dev2:  # Player 2's Start
-                        print("Player 2 Start (BTN_BASE4) pressed.")
-                        ui_player2.write_event(event)  # Route to Player 2
-                        ui_player2.syn()
-                    else:          #Player 1's BTN_BASE4
-                        print("Player 1 BTN_BASE4 pressed.")
-                        ui_player1.write_event(event)
-                        ui_player1.syn()
+                print(f"merge_enabled: {merge_enabled}")
+                if merge_enabled == True:
+                    if event.type == ecodes.EV_KEY and event.code == ecodes.BTN_BASE4:
+                        if d == dev2:  
+                            print(f"Routing Controller 2 event {event.code} (start) to Controller 2.")
+                            ui_player2.write_event(event)  # Route to Player 2
+                            ui_player2.syn()
+                        else:         
+                            print(f"Routing Controller 1 event {event.code} (start) to Controller 1.")
+                            ui_player1.write_event(event)
+                            ui_player1.syn()
+                    elif event.type in [ecodes.EV_KEY, ecodes.EV_ABS]:
+                        if d == dev2:  # Route other Player 2 events to Player 1
+                            print(f"Routing Controller 2 event {event.code} to Controller 1.")
+                            ui_player1.write_event(event)
+                            ui_player1.syn()
+                        else:
+                            print(f"Routing Controller 1 event {event.code} to Controller 1.")
+                            ui_player1.write_event(event)
+                            ui_player1.syn()
                 elif event.type in [ecodes.EV_KEY, ecodes.EV_ABS]:
                     if d == dev2:  # Route other Player 2 events to Player 1
-                        print(f"Routing Player 2 event {event.code} to Player 1.")
-                        ui_player1.write_event(event)
-                        ui_player1.syn()
+                        print(f"Routing Controller 2 event {event.code} to Controller 2.")
+                        ui_player2.write_event(event)
+                        ui_player2.syn()
                     else:
+                        print(f"Routing Controller 1 event {event.code} to Controller 1.")
                         ui_player1.write_event(event)
-                        ui_player1.syn()
+                        ui_player1.syn()           
 
 except (OSError, IOError) as e:
     print(f"Device error: {e}. Reconnecting devices and resetting controllers...")
