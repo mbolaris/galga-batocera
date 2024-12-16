@@ -1157,6 +1157,7 @@ panich.zip
 panic2.zip
 panic3.zip
 panic.zip
+scramble.zip
 spaceph.zip
 sraider.zip
 spacerng.zip
