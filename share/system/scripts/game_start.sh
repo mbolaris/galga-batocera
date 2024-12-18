@@ -2,7 +2,7 @@
 
 # Paths and Configuration
 readonly CONTROLLER_SWITCHER_DIR="/userdata/system/tos428"
-readonly CONTROLLER_CONFIG_DIR="/userdata/system/controller_config"
+readonly CONTROLLER_CONFIG_DIR="/userdata/system/controller-config"
 
 # Configuration Files
 readonly FOUR_WAY_ROMS_LIST="${CONTROLLER_SWITCHER_DIR}/roms4way.txt"

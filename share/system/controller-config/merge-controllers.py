@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 
-import evdev
-from evdev import UInput, ecodes, AbsInfo
+from evdev import UInput, ecodes, AbsInfo, InputDevice, list_devices
 import select
-import os
 import time
 from datetime import datetime
 
 # Configuration
 MERGE_STATE_PATH = "/tmp/merge_controller_enabled"
-PRIMARY_CONTROLLER_PATH = '/dev/input/event0'
-SECONDARY_CONTROLLER_PATH = '/dev/input/event1'
 
 # Device Capabilities
 CONTROLLER_CAPABILITIES = {
@@ -33,19 +29,26 @@ virtual_secondary_controller = None
 def timestamp():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# Initialize Controllers
+# Automatically Assign Gamepad 1 and 2
 def initialize_controllers():
-    while True:
-        try:
-            primary_device = evdev.InputDevice(PRIMARY_CONTROLLER_PATH)
-            secondary_device = evdev.InputDevice(SECONDARY_CONTROLLER_PATH)
-            primary_device.grab()
-            secondary_device.grab()
-            print(f"{timestamp()} - Controllers successfully initialized.")
-            return primary_device, secondary_device
-        except Exception as e:
-            print(f"{timestamp()} - Error initializing controllers: {e}. Retrying in 2 seconds...")
-            time.sleep(2)
+    devices = [InputDevice(path) for path in list_devices()]
+    gamepads = [device for device in devices if "Twin USB Gamepad" in device.name]
+    gamepads = sorted(gamepads, key=lambda x: x.path)  # Sort by event path to ensure consistent ordering
+
+    if len(gamepads) < 2:
+        print(f"{timestamp()} - Not enough gamepads detected. Found: {len(gamepads)}")
+        time.sleep(2)
+        return None, None
+
+    primary_device = gamepads[0]
+    secondary_device = gamepads[1]
+
+    print(f"{timestamp()} - Gamepad 1: {primary_device.path}, Gamepad 2: {secondary_device.path}")
+
+    primary_device.grab()
+    secondary_device.grab()
+
+    return primary_device, secondary_device
 
 # Reset Virtual Controllers
 def reset_virtual_devices():
@@ -71,29 +74,25 @@ def is_merge_enabled():
 
 # Handle Input Events
 def handle_event(event, current_device, merge_enabled):
-    is_secondary = (current_device.path == SECONDARY_CONTROLLER_PATH)
+    global secondary_device  # Access the global secondary_device variable
+
+    is_secondary = (current_device == secondary_device)
+    target_device = virtual_secondary_controller if is_secondary else virtual_primary_controller
+
     print(f"{timestamp()} - Device: {current_device.path}, Type: {event.type}, Code: {event.code}, Value: {event.value}")
-    print(f"{timestamp()} - merge_enabled: {merge_enabled}")
 
     if merge_enabled:
-        if event.type == ecodes.EV_KEY and event.code == ecodes.BTN_BASE4:
-            target_device = virtual_secondary_controller if is_secondary else virtual_primary_controller
-            print(f"{timestamp()} - Routing start event {event.code} to {'Secondary' if is_secondary else 'Primary'} controller.")
-        else:
-            target_device = virtual_primary_controller
-            print(f"{timestamp()} - Routing event {event.code} to Primary controller.")
-    else:
-        target_device = virtual_secondary_controller if is_secondary else virtual_primary_controller
-        print(f"{timestamp()} - Routing event {event.code} to respective controller.")
+        target_device = virtual_primary_controller  # Merge all input to primary virtual controller
 
     target_device.write_event(event)
     target_device.syn()
 
+
 # Main Logic
 def main():
     global virtual_primary_controller, virtual_secondary_controller
+    global primary_device, secondary_device  # Make these global
 
-    # Initialize Virtual Controllers
     reset_virtual_devices()
 
     primary_device, secondary_device = initialize_controllers()
@@ -103,20 +102,12 @@ def main():
         while True:
             merge_enabled = is_merge_enabled()
 
-            if merge_enabled != previous_merge_state:
-                print(f"{timestamp()} - Merge state changed. Reinitializing...")
-                primary_device.ungrab()
-                secondary_device.ungrab()
-                primary_device, secondary_device = initialize_controllers()
-                reset_virtual_devices()
-                previous_merge_state = merge_enabled
-
             if not (primary_device and secondary_device):
-                print(f"{timestamp()} - Controllers disconnected. Reconnecting...")
+                print(f"{timestamp()} - Reinitializing controllers...")
                 primary_device, secondary_device = initialize_controllers()
                 reset_virtual_devices()
+                continue
 
-            # Wait for input with a 1-second timeout
             fds = [primary_device.fd, secondary_device.fd]
             ready, _, _ = select.select(fds, [], [], 1.0)
 
@@ -125,33 +116,21 @@ def main():
 
             for fd in ready:
                 current_device = primary_device if fd == primary_device.fd else secondary_device
-                print(f"{timestamp()} - {'Primary' if current_device == primary_device else 'Secondary'} controller event detected.")
                 for event in current_device.read():
-                    handle_event(event, current_device, previous_merge_state)
-
-    except (OSError, IOError) as e:
-        print(f"{timestamp()} - Device error: {e}. Reconnecting and resetting...")
-        primary_device, secondary_device = initialize_controllers()
-        reset_virtual_devices()
+                    handle_event(event, current_device, merge_enabled)
 
     except KeyboardInterrupt:
         print(f"{timestamp()} - Exiting...")
 
     finally:
-        if virtual_primary_controller:
-            virtual_primary_controller.close()
-        if virtual_secondary_controller:
-            virtual_secondary_controller.close()
+        if virtual_primary_controller: virtual_primary_controller.close()
+        if virtual_secondary_controller: virtual_secondary_controller.close()
         if primary_device:
-            try:
-                primary_device.ungrab()
-            except:
-                pass
+            try: primary_device.ungrab()
+            except: pass
         if secondary_device:
-            try:
-                secondary_device.ungrab()
-            except:
-                pass
+            try: secondary_device.ungrab()
+            except: pass
 
 if __name__ == "__main__":
     main()
