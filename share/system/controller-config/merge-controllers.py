@@ -18,11 +18,20 @@ Key Features:
 
 from evdev import UInput, ecodes, AbsInfo, InputDevice, list_devices
 import select
+import sys
 import time
 from datetime import datetime
+import logging
 
 # Configuration
 MERGE_STATE_PATH = "/tmp/merge_controller_enabled"
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 # Device Capabilities
 CONTROLLER_CAPABILITIES = {
@@ -36,147 +45,179 @@ CONTROLLER_CAPABILITIES = {
         (ecodes.ABS_Y, AbsInfo(value=127, min=0, max=255, fuzz=0, flat=15, resolution=0)),
     ],
 }
+class ControllerManager:
+    """
+    Manages the initialization, event handling, and merging of game controllers.
 
-# Globals
-virtual_primary_controller = None
-virtual_secondary_controller = None
-primary_device = None
-secondary_device = None
+    This class sets up virtual controllers, detects physical controllers, handles input events,
+    and merges input from multiple controllers based on a configurable state.
+    """
+    def __init__(self, merge_state_path=MERGE_STATE_PATH):
+        self.merge_state_path = merge_state_path
+        self.virtual_primary_controller = None
+        self.virtual_secondary_controller = None
+        self.primary_device = None
+        self.secondary_device = None
+        self.previous_merge_state = False
+        self.running = True
 
-# Timestamp for Logs
-def timestamp():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.setup_virtual_controllers()
+        self.initialize_controllers()
 
-# Automatically Assign Gamepad 1 and 2
-def initialize_controllers():
-    devices = [InputDevice(path) for path in list_devices()]
-    gamepads = [device for device in devices if "Twin USB Gamepad" in device.name]
-    gamepads = sorted(gamepads, key=lambda x: x.path)  # Sort by event path to ensure consistent ordering
+    def setup_virtual_controllers(self):
+        """Initialize or reset virtual controllers."""
+        logging.info("Setting up virtual controllers...")
+        if self.virtual_primary_controller:
+            self.virtual_primary_controller.close()
+        if self.virtual_secondary_controller:
+            self.virtual_secondary_controller.close()
 
-    if len(gamepads) < 2:
-        print(f"{timestamp()} - Not enough gamepads detected. Found: {len(gamepads)}")
-        time.sleep(2)
-        return None, None
+        try:
+            self.virtual_primary_controller = UInput(CONTROLLER_CAPABILITIES, name="Virtual Controller P1", version=0x3)
+            self.virtual_secondary_controller = UInput(CONTROLLER_CAPABILITIES, name="Virtual Controller P2", version=0x3)
+            logging.info("Virtual controllers initialized successfully.")
+        except Exception as e:
+            logging.error(f"Failed to initialize virtual controllers: {e}", exc_info=True)
+            sys.exit(1)
 
-    primary_device = gamepads[0]
-    secondary_device = gamepads[1]
+    def initialize_controllers(self):
+        """Detect and initialize primary and secondary game controllers."""
+        logging.info("Initializing physical controllers...")
+        devices = [InputDevice(path) for path in list_devices()]
+        gamepads = [device for device in devices if "Twin USB Gamepad" in device.name]
+        gamepads = sorted(gamepads, key=lambda x: x.path)  # Ensure consistent ordering
 
-    print(f"{timestamp()} - Gamepad 1: {primary_device.path}, Gamepad 2: {secondary_device.path}")
+        if len(gamepads) < 2:
+            logging.warning(f"Not enough gamepads detected. Found: {len(gamepads)}. Required: 2.")
+            self.primary_device = None
+            self.secondary_device = None
+            return
 
-    try:
-        print(f"{timestamp()} - Grabbing devices...")
-        primary_device.grab()
-        secondary_device.grab()
-        print(f"{timestamp()} - Devices grabbed successfully.")
-    except Exception as e:
-        print(f"{timestamp()} - Error grabbing devices: {e}")
-        return None, None
+        self.primary_device, self.secondary_device = gamepads[:2]
+        logging.info(f"Gamepad 1: {self.primary_device.path}, Gamepad 2: {self.secondary_device.path}")
 
-    return primary_device, secondary_device
+        try:
+            logging.info("Grabbing devices...")
+            self.primary_device.grab()
+            self.secondary_device.grab()
+            logging.info("Devices grabbed successfully.")
+        except Exception as e:
+            logging.error(f"Error grabbing devices: {e}", exc_info=True)
+            self.primary_device = None
+            self.secondary_device = None
 
-# Reset Virtual Controllers
-def reset_virtual_devices():
-    global virtual_primary_controller, virtual_secondary_controller
-    print(f"{timestamp()} - Resetting virtual devices...")
+    def is_merge_enabled(self):
+        """Check if merge state is enabled by reading the specified file."""
+        try:
+            with open(self.merge_state_path, "r") as f:
+                state = f.read().strip()
+                return state.lower() == "true"
+        except FileNotFoundError:
+            logging.debug(f"Merge state file not found at {self.merge_state_path}. Defaulting to False.")
+            return False
+        except Exception as e:
+            logging.error(f"Error reading merge state: {e}", exc_info=True)
+            return False
 
-    if virtual_primary_controller:
-        virtual_primary_controller.close()
-    if virtual_secondary_controller:
-        virtual_secondary_controller.close()
+    def handle_event(self, event, current_device, merge_enabled):
+        """Process and route input events to the appropriate virtual controller."""
+        try:
+            is_secondary = (current_device == self.secondary_device)
+            
+            if merge_enabled:
+                if event.type == ecodes.EV_KEY and event.code == ecodes.BTN_BASE4:
+                    # Route Start button to respective virtual controller
+                    target_device = self.virtual_secondary_controller if is_secondary else self.virtual_primary_controller
+                    logging.info(f"Routing Start event (BTN_BASE4) from {'Secondary' if is_secondary else 'Primary'} device to {'Secondary' if is_secondary else 'Primary'} virtual controller.")
+                else:
+                    # Merge all other inputs to Primary virtual controller
+                    target_device = self.virtual_primary_controller
+                    logging.debug(f"Merging event {ecodes.KEY[event.code] if event.code in ecodes.KEY else event.code} to Primary virtual controller.")
+            else:
+                # Route events to respective virtual controllers
+                target_device = self.virtual_secondary_controller if is_secondary else self.virtual_primary_controller
+                logging.debug(f"Routing event {ecodes.KEY[event.code] if event.code in ecodes.KEY else event.code} to {'Secondary' if is_secondary else 'Primary'} virtual controller.")
+            
+            target_device.write_event(event)
+            target_device.syn()
 
-    virtual_primary_controller = UInput(CONTROLLER_CAPABILITIES, name="Virtual Controller P1", version=0x3)
-    virtual_secondary_controller = UInput(CONTROLLER_CAPABILITIES, name="Virtual Controller P2", version=0x3)
-    print(f"{timestamp()} - Virtual devices reset.")
+            logging.debug(f"Event handled: Device={current_device.path}, Type={event.type}, Code={event.code}, Value={event.value}")
+        except Exception as e:
+            logging.error(f"Error handling event: {e}", exc_info=True)
 
-# Check Merge State
-def is_merge_enabled():
-    try:
-        with open(MERGE_STATE_PATH, "r") as f:
-            return f.read().strip() == "True"
-    except FileNotFoundError:
-        return False
+    def release_devices(self):
+        """Release grabbed devices and close virtual controllers."""
+        logging.info("Releasing resources...")
+        if self.virtual_primary_controller:
+            self.virtual_primary_controller.close()
+            logging.info("Virtual primary controller closed.")
+        if self.virtual_secondary_controller:
+            self.virtual_secondary_controller.close()
+            logging.info("Virtual secondary controller closed.")
 
-# Handle Input Events
-def handle_event(event, current_device, merge_enabled):
-    global secondary_device  # Access the global secondary_device variable
+        if self.primary_device:
+            try:
+                self.primary_device.ungrab()
+                logging.info("Released Gamepad 1.")
+            except Exception as e:
+                logging.error(f"Failed to release Gamepad 1: {e}", exc_info=True)
+        if self.secondary_device:
+            try:
+                self.secondary_device.ungrab()
+                logging.info("Released Gamepad 2.")
+            except Exception as e:
+                logging.error(f"Failed to release Gamepad 2: {e}", exc_info=True)
 
-    try:
-        is_secondary = (current_device == secondary_device)
-        target_device = virtual_secondary_controller if is_secondary else virtual_primary_controller
+    def run(self):
+        """Main loop to process input events."""
+        logging.info("Starting main event loop.")
+        while self.running:
+            merge_enabled = self.is_merge_enabled()
 
-        print(f"{timestamp()} - Device: {current_device.path}, Type: {event.type}, Code: {event.code}, Value: {event.value}")
+            if merge_enabled != self.previous_merge_state:
+                logging.info(f"Merge state changed to {'ENABLED' if merge_enabled else 'DISABLED'}.")
+                self.previous_merge_state = merge_enabled
 
-        if merge_enabled:
-            target_device = virtual_primary_controller  # Merge all input to primary virtual controller
+            if not (self.primary_device and self.secondary_device):
+                self.initialize_controllers()
+                if not (self.primary_device and self.secondary_device):
+                    logging.debug("Controllers not initialized. Retrying in 5 seconds...")
+                    time.sleep(5)
+                    continue
+                self.setup_virtual_controllers()
 
-        target_device.write_event(event)
-        target_device.syn()
-    except Exception as e:
-        print(f"{timestamp()} - Error handling event: {e}")
-
-# Main Logic
-def main():
-    global virtual_primary_controller, virtual_secondary_controller
-    global primary_device, secondary_device  # Make these global
-
-    reset_virtual_devices()
-
-    primary_device, secondary_device = initialize_controllers()
-    previous_merge_state = is_merge_enabled()
-
-    try:
-        while True:
-            merge_enabled = is_merge_enabled()
-
-            if merge_enabled != previous_merge_state:
-                print(f"{timestamp()} - Merge state changed to {'ENABLED' if merge_enabled else 'DISABLED'}")
-                previous_merge_state = merge_enabled
-
-            if not (primary_device and secondary_device):
-                print(f"{timestamp()} - Reinitializing controllers...")
-                primary_device, secondary_device = initialize_controllers()
-                reset_virtual_devices()
+            fds = [self.primary_device.fd, self.secondary_device.fd]
+            try:
+                ready, _, _ = select.select(fds, [], [], 1.0)
+            except select.error as e:
+                logging.error(f"Select error: {e}", exc_info=True)
+                time.sleep(1)
                 continue
-
-            fds = [primary_device.fd, secondary_device.fd]
-            ready, _, _ = select.select(fds, [], [], 1.0)
 
             if not ready:
                 continue
 
             for fd in ready:
-                current_device = primary_device if fd == primary_device.fd else secondary_device
+                current_device = self.primary_device if fd == self.primary_device.fd else self.secondary_device
                 try:
                     for event in current_device.read():
-                        handle_event(event, current_device, merge_enabled)
+                        if event.type in [ecodes.EV_KEY, ecodes.EV_ABS]:
+                            self.handle_event(event, current_device, merge_enabled)
                 except OSError as e:
-                    print(f"{timestamp()} - Error reading from device {current_device.path}: {e}")
-                    primary_device, secondary_device = initialize_controllers()
-                    reset_virtual_devices()
-                    break
+                    logging.error(f"Error reading from device {current_device.path}: {e}", exc_info=True)
+                    self.initialize_controllers()
+                    self.setup_virtual_controllers()
+                    break  # Exit the for-loop and restart the while-loop
 
-    except KeyboardInterrupt:
-        print(f"{timestamp()} - Exiting...")
+        self.release_devices()
+        logging.info("Main loop exited.")
 
-    finally:
-        if virtual_primary_controller:
-            virtual_primary_controller.close()
-            print(f"{timestamp()} - Virtual primary controller closed.")
-        if virtual_secondary_controller:
-            virtual_secondary_controller.close()
-            print(f"{timestamp()} - Virtual secondary controller closed.")
-        if primary_device:
-            try:
-                primary_device.ungrab()
-                print(f"{timestamp()} - Released Gamepad 1")
-            except Exception as e:
-                print(f"{timestamp()} - Failed to release Gamepad 1: {e}")
-        if secondary_device:
-            try:
-                secondary_device.ungrab()
-                print(f"{timestamp()} - Released Gamepad 2")
-            except Exception as e:
-                print(f"{timestamp()} - Failed to release Gamepad 2: {e}")
+def main():
+    """
+    Initialize the ControllerManager and start the main event loop.
+    """
+    manager = ControllerManager()
+    manager.run()
 
 if __name__ == "__main__":
     main()
