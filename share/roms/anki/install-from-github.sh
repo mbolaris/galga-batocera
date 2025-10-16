@@ -55,11 +55,25 @@ rm -rf "$TEMP_DIR"
 mkdir -p "$TEMP_DIR"
 echo "      ✓ Using $TEMP_DIR"
 
-# Clone the repository
-echo "[3/6] Cloning Anki viewer from GitHub..."
+# Download the repository (Batocera doesn't have git)
+echo "[3/6] Downloading Anki viewer from GitHub..."
 cd "$TEMP_DIR"
-git clone --depth 1 "$ANKI_REPO" anki-source
-echo "      ✓ Repository cloned"
+
+# Download as zip archive from GitHub
+GITHUB_ZIP="https://github.com/mbolaris/anki/archive/refs/heads/main.zip"
+wget -q "$GITHUB_ZIP" -O anki-main.zip || curl -sL "$GITHUB_ZIP" -o anki-main.zip
+
+if [ ! -f "anki-main.zip" ]; then
+    echo "      ✗ Failed to download from GitHub"
+    exit 1
+fi
+
+# Extract the zip file
+unzip -q anki-main.zip
+mv anki-main anki-source
+rm anki-main.zip
+
+echo "      ✓ Repository downloaded and extracted"
 
 # Copy necessary files to install directory
 echo "[4/6] Installing files..."
