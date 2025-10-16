@@ -1,0 +1,31 @@
+{
+  // Recommended VSCode extensions for Anki Viewer development
+  "recommendations": [
+    // Python development
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.black-formatter",
+
+    // Flask/Web development
+    "wholroyd.jinja",
+    "ecmel.vscode-html-css",
+
+    // Shell script support
+    "foxundermoon.shell-format",
+    "timonwong.shellcheck",
+
+    // Makefile support
+    "ms-vscode.makefile-tools",
+
+    // Git
+    "eamodio.gitlens",
+
+    // Remote development
+    "ms-vscode-remote.remote-ssh",
+
+    // General utilities
+    "editorconfig.editorconfig",
+    "christian-kohler.path-intellisense",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}

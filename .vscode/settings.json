@@ -1,0 +1,81 @@
+{
+  // Python settings for Anki Viewer development
+  "python.defaultInterpreterPath": "${workspaceFolder}/share/roms/anki/venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/share/roms/anki"
+  ],
+
+  // Flask development
+  "python.envFile": "${workspaceFolder}/share/roms/anki/.env",
+
+  // File associations
+  "files.associations": {
+    "*.cfg": "xml",
+    "es_systems_*.cfg": "xml"
+  },
+
+  // Exclude patterns (keep editor fast)
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/venv": true,
+    "**/.flask.pid": true,
+    "**/*.log": true
+  },
+
+  "search.exclude": {
+    "**/venv": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+
+  // Git settings
+  "git.ignoreLimitWarning": true,
+
+  // Remote development hints
+  "remote.SSH.remotePlatform": {
+    "192.168.1.53": "linux"
+  },
+
+  // Terminal settings
+  "terminal.integrated.cwd": "${workspaceFolder}",
+
+  // Auto-save (useful for SMB share development)
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+
+  // Line endings (Unix-style for Batocera compatibility)
+  "files.eol": "\n",
+
+  // Python linting
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": true,
+  "python.linting.flake8Args": [
+    "--max-line-length=120",
+    "--ignore=E501,W503"
+  ],
+
+  // Python formatting
+  "python.formatting.provider": "black",
+  "python.formatting.blackArgs": [
+    "--line-length=120"
+  ],
+
+  // Editor settings
+  "editor.formatOnSave": true,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+
+  // Shell script settings
+  "[shellscript]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format"
+  },
+
+  // Makefile settings
+  "[makefile]": {
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4
+  }
+}

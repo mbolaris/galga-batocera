@@ -1,0 +1,18 @@
+# Anki Deck Viewer - Python Dependencies
+# All packages will be installed in the local venv
+
+# Web framework
+flask>=3.0.0
+
+# Anki deck processing
+ankipandas>=0.3.10
+
+# Data processing
+pandas>=2.0.0
+
+# Optional: for better Anki SQLite handling
+# sqlite3 is built into Python, but these can help
+sqlalchemy>=2.0.0
+
+# Optional: for enhanced data display
+jinja2>=3.1.0  # (included with Flask, but listed for clarity)

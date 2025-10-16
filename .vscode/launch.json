@@ -1,0 +1,44 @@
+{
+  // VSCode Launch Configurations for Anki Viewer
+  // Press F5 to start debugging
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flask: Run Locally",
+      "type": "python",
+      "request": "launch",
+      "module": "flask",
+      "env": {
+        "FLASK_APP": "${workspaceFolder}/share/roms/anki/app.py",
+        "FLASK_ENV": "development",
+        "FLASK_DEBUG": "1"
+      },
+      "args": [
+        "run",
+        "--host=0.0.0.0",
+        "--port=5000"
+      ],
+      "jinja": true,
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}/share/roms/anki"
+    },
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "cwd": "${fileDirname}",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: app.py",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/share/roms/anki/app.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/share/roms/anki",
+      "justMyCode": true
+    }
+  ]
+}

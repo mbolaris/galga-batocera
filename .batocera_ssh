@@ -1,0 +1,75 @@
+#!/bin/bash
+# Batocera SSH Helper
+# Source this file to get automated SSH access: source .batocera_ssh
+#
+# Usage after sourcing:
+#   batocera-ssh [command]     - Run command on Batocera
+#   batocera-shell             - Interactive shell on Batocera
+#   batocera-scp <file> <dest> - Copy file to Batocera
+
+export BATOCERA_HOST="192.168.1.53"
+export BATOCERA_USER="root"
+export BATOCERA_PASSWORD="linux"
+export BATOCERA_PATH="/userdata/roms/anki"
+
+# Function to SSH with auto password
+batocera-ssh() {
+    if [ $# -eq 0 ]; then
+        echo "Usage: batocera-ssh 'command'"
+        echo "   or: batocera-shell for interactive"
+        return 1
+    fi
+
+    # Use SSH with password via environment variable
+    # Note: This requires sshpass or similar
+    # For now, we'll document that password entry is still needed
+    ssh -o PreferredAuthentications=password "$BATOCERA_USER@$BATOCERA_HOST" "$@"
+}
+
+# Interactive shell
+batocera-shell() {
+    echo "Connecting to $BATOCERA_USER@$BATOCERA_HOST..."
+    echo "Password: $BATOCERA_PASSWORD"
+    ssh -t "$BATOCERA_USER@$BATOCERA_HOST" "cd $BATOCERA_PATH && exec bash"
+}
+
+# SCP wrapper
+batocera-scp() {
+    if [ $# -lt 2 ]; then
+        echo "Usage: batocera-scp <local-file> <remote-path>"
+        return 1
+    fi
+    local_file="$1"
+    remote_path="$2"
+    scp "$local_file" "$BATOCERA_USER@$BATOCERA_HOST:$remote_path"
+}
+
+# Quick commands
+batocera-deploy() {
+    echo "Deploying to Batocera..."
+    cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    batocera-scp share/roms/anki/* "$BATOCERA_PATH/"
+}
+
+batocera-logs() {
+    batocera-ssh "tail -f $BATOCERA_PATH/flask.log"
+}
+
+batocera-status() {
+    batocera-ssh "cd $BATOCERA_PATH && if [ -f .flask.pid ]; then echo 'Running (PID: '\$(cat .flask.pid)')'; else echo 'Stopped'; fi"
+}
+
+echo "Batocera SSH helpers loaded!"
+echo "  Host: $BATOCERA_HOST"
+echo "  User: $BATOCERA_USER"
+echo "  Password: (stored)"
+echo ""
+echo "Available commands:"
+echo "  batocera-ssh 'command'  - Run command on Batocera"
+echo "  batocera-shell          - Interactive shell"
+echo "  batocera-scp <file> <dest> - Copy files"
+echo "  batocera-logs           - View logs"
+echo "  batocera-status         - Check status"
+echo ""
+echo "Note: You'll still need to enter password for SSH commands."
+echo "Password is: $BATOCERA_PASSWORD"
