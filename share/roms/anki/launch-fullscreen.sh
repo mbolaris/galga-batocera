@@ -65,31 +65,26 @@ echo ""
 echo "========================================"
 echo ""
 
-# Try different browser options in order of preference
+# Launch Kodi with the URL
 export DISPLAY=$DISPLAY
 
-# Option 1: Try Chromium in kiosk mode if available
-if command -v chromium >/dev/null 2>&1; then
-    chromium --kiosk --app="$FLASK_URL" 2>/dev/null
-# Option 2: Try Firefox
-elif command -v firefox >/dev/null 2>&1; then
-    firefox --kiosk "$FLASK_URL" 2>/dev/null
-# Option 3: Open in Kodi's web browser
-elif command -v kodi-standalone >/dev/null 2>&1; then
-    echo "Opening in Kodi..."
-    kodi-standalone "$FLASK_URL" 2>/dev/null
-# Option 4: Fallback - create a simple SDL viewer that embeds a browser
-else
-    echo "No browser found. Opening with text mode instructions..."
-    echo ""
-    echo "On GALAGA, you can:"
-    echo "  1. Press F1 to exit"
-    echo "  2. Go to Applications"
-    echo "  3. Select Kodi"
-    echo "  4. Navigate to: $FLASK_URL"
-    echo ""
-    read -p "Press Enter when done studying..."
-fi
+echo "Opening Kodi..."
+echo ""
+echo "  Once in Kodi:"
+echo "  1. Go to Add-ons"
+echo "  2. Search for 'Web Browser' and install if needed"
+echo "  3. Open Web Browser"
+echo "  4. Navigate to: localhost:5000"
+echo ""
+echo "  Or simply remember to open: $FLASK_URL"
+echo ""
+
+# Launch Kodi
+kodi-standalone 2>/dev/null &
+KODI_PID=$!
+
+# Wait for Kodi to exit
+wait $KODI_PID
 
 # Restart EmulationStation
 echo ""

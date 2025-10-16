@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Anki Flashcard Viewer - EmulationStation Port Launcher
-# Launches the Anki deck viewer in fullscreen on GALAGA
+# Starts the Flask app and shows instructions for opening in Kodi
 #
 
-/userdata/roms/anki/launch-fullscreen.sh
+/userdata/roms/anki/launch-simple.sh
