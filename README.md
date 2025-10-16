@@ -14,12 +14,17 @@ This repository contains customizations and apps for Batocera Linux, including a
 
 ### Anki Deck Viewer (Flask App)
 
-A self-contained web application for viewing Anki flashcard decks on Batocera:
+A polished web application for studying Anki flashcard decks on Batocera:
 
+- **Full Anki `.apkg` support** - Reads actual Anki decks with SQLite parser
+- **Multiple card types** - Basic, cloze deletion, and image-only cards
 - **Flask-based web UI** - Access at `http://batocera-ip:5000`
+- **Keyboard shortcuts** - Space to flip, arrows to navigate, 'R' for random, '?' for help
+- **Multi-deck support** - Switch between decks without restarting
 - **Self-contained** - All deps in local Python venv, no system modifications
 - **EmulationStation integration** - Launch from ES menu like any other app
 - **Full development workflow** - Deploy from Windows PC via VSCode, SSH, or SMB
+- **Source**: https://github.com/mbolaris/anki
 
 **Key Files:**
 - [share/roms/anki/](share/roms/anki/) - Complete Flask application
@@ -84,40 +89,48 @@ See [DEPLOYMENT-COMPLETE.md](DEPLOYMENT-COMPLETE.md) for full details and next s
 
 **✅ Already Deployed!** The app is ready at `/userdata/roms/anki` on your Batocera device.
 
-To deploy updates:
+### Install/Update from GitHub (Recommended)
 
-**Option 1: Quick Deploy Batch Script (Recommended)**
+To install or update to the latest version from https://github.com/mbolaris/anki:
+
+**From Windows:**
 ```cmd
-deploy-quick.bat
+deploy-anki-from-github.bat
 ```
-This handles file copying, line ending conversion, and Flask restart automatically.
 
-**Option 2: Using Make (After SSH keys fixed)**
+**From Batocera (SSH):**
+```bash
+ssh root@192.168.1.53
+cd /userdata/roms/anki
+./install-from-github.sh
+```
+
+**For clean install (removes existing):**
+```cmd
+deploy-anki-from-github.bat clean
+```
+
+This will:
+- Clone the latest version from GitHub
+- Install to `/userdata/roms/anki`
+- Preserve your deck files in `/userdata/roms/anki/decks/`
+- Restart the Flask app automatically
+
+### Alternative Deployment Methods
+
+**Option 1: Using Make**
 ```powershell
 cd c:\shared\bolaris\galga-batocera
-
-# Edit Makefile to set your Batocera IP
-notepad Makefile  # Change BATOCERA_HOST to your device IP
-
-# Deploy and set up
-make install-remote
+make deploy BATOCERA_HOST=192.168.1.53
 ```
 
-**Option 3: Using SMB Share**
-```
-1. Copy share/roms/anki/ to \\BATOCERA\share\roms\anki\
-2. Copy share/system/configs/emulationstation/es_systems_anki.cfg
-   to \\BATOCERA\share\system\configs\emulationstation\
-3. SSH into Batocera and run:
-   chmod +x /userdata/roms/anki/*.sh
+**Option 2: Using SMB Share (Manual)**
+1. Copy deployment scripts to `\\BATOCERA\share\roms\anki\`
+2. SSH into Batocera and run the GitHub installer:
+   ```bash
    cd /userdata/roms/anki
-   ./start-anki-viewer.sh
-```
-
-**Option 3: Using PowerShell Script**
-```powershell
-.\dev-tools\deploy.ps1 -Host 192.168.1.53 -Update
-```
+   ./install-from-github.sh
+   ```
 
 ### Access the App
 

@@ -1,6 +1,18 @@
 # Anki Deck Viewer - Flask App for Batocera
 
-A self-contained Flask web application for viewing Anki decks on Batocera Linux.
+A polished Flask web application for viewing Anki flashcard decks on Batocera Linux.
+
+**Source**: https://github.com/mbolaris/anki
+
+## Features
+
+- **Automatic card type detection**: Recognizes basic, cloze deletion, and image-only cards
+- **Polished UI**: Responsive card viewer with keyboard shortcuts (Space, arrows, 'R' for random, '?' for help)
+- **Progress tracking**: Per-deck progress using browser sessionStorage
+- **Multi-deck support**: Switch between multiple `.apkg` files without restarting
+- **Image support**: Inline images with lazy loading and loading states
+- **JSON API**: `/api/cards` endpoint for integrations and automated checks
+- **Real Anki parsing**: Reads actual `.apkg` files using SQLite and proper Anki format
 
 ## Architecture
 
@@ -9,12 +21,15 @@ This app follows Batocera best practices:
 - **Persistent**: Lives in `/userdata/roms/anki` which survives system updates
 - **No system modifications**: Doesn't require apt or system package changes
 - **Portable**: Can be copied via SMB share (`\\BATOCERA\share\roms\anki`)
+- **Real Anki parser**: Uses Python standard library to parse `.apkg` files (SQLite, JSON, ZIP)
 
 ## Files
 
 - `start-anki-viewer.sh` - Main launcher script (sets up venv, installs deps, starts Flask)
-- `requirements.txt` - Python package dependencies (Flask, ankipandas, etc.)
-- `app.py` - Flask application (you need to create this)
+- `requirements.txt` - Python package dependencies (Flask 3.0+, pytest, pytest-cov)
+- `app.py` - Flask application entrypoint
+- `anki_viewer/` - Main application package with deck loader, card parsers, templates, and static assets
+- `decks/` - Directory for your `.apkg` files
 - `venv/` - Python virtual environment (auto-created on first run)
 
 ## Installation

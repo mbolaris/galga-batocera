@@ -15,6 +15,7 @@ cd "$(dirname "$0")"
 APP_DIR="/userdata/roms/anki"
 VENV_DIR="$APP_DIR/venv"
 FLASK_APP="$APP_DIR/app.py"
+DECK_PATH="$APP_DIR/decks"
 PORT=5000
 
 echo "========================================"
@@ -49,6 +50,9 @@ else
     pip install flask -q
 fi
 
+# Create decks directory if it doesn't exist
+mkdir -p "$DECK_PATH"
+
 # Step 4: Start the Flask app
 echo "[4/4] Starting Flask app on port $PORT..."
 echo ""
@@ -56,6 +60,11 @@ echo "========================================"
 echo "  Access the app at:"
 echo "  http://$(hostname -I | awk '{print $1}'):$PORT"
 echo "  http://localhost:$PORT (local)"
+echo "========================================"
+echo ""
+echo "  Deck path: $DECK_PATH"
+echo "  Place your .apkg files in this directory"
+echo ""
 echo "========================================"
 echo ""
 
@@ -66,7 +75,13 @@ if [ ! -f "$FLASK_APP" ]; then
     exit 1
 fi
 
-# Start Flask with host 0.0.0.0 to allow external access
-export FLASK_APP="$FLASK_APP"
-export FLASK_ENV=development
-python -m flask run --host=0.0.0.0 --port=$PORT
+# Set environment variables for the Anki viewer
+# ANKI_DATA_DIR: directory containing .apkg files (enables deck switching)
+# ANKI_VIEWER_MEDIA_URL: URL path for serving media files
+export ANKI_DATA_DIR="$DECK_PATH"
+export ANKI_VIEWER_MEDIA_URL="/media"
+unset ANKI_DECK_PATH  # Let it auto-discover from ANKI_DATA_DIR
+
+# Start Flask directly with python
+cd "$APP_DIR"
+python app.py
