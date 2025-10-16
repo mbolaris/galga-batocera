@@ -1,0 +1,8 @@
+<system>
+  <name>ports</name>
+  <fullname>Ports</fullname>
+  <path>/userdata/roms/ports</path>
+  <extension>.sh</extension>
+  <command>bash %ROM%</command>
+  <platform>ports</platform>
+</system>
