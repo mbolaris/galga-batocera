@@ -89,6 +89,21 @@ See [DEPLOYMENT-COMPLETE.md](DEPLOYMENT-COMPLETE.md) for full details and next s
 
 **✅ Already Deployed!** The app is ready at `/userdata/roms/anki` on your Batocera device.
 
+### One-Time Setup: SSH Keys (Faster Deployments)
+
+To avoid entering passwords during deployment, set up SSH key authentication:
+
+```cmd
+setup-ssh-key.bat
+```
+
+This will:
+- Generate an SSH key if you don't have one
+- Copy it to GALAGA for password-less access
+- Only needs to be done once
+
+After this, deployments are much faster with fewer password prompts!
+
 ### Install/Update from GitHub (Recommended)
 
 To install or update to the latest version from https://github.com/mbolaris/anki:
