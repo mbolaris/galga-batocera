@@ -57,5 +57,74 @@ Agent behaviour rules (persistent)
 
 If something cannot be done within these constraints, document why and provide a safe, user-approved alternative (for example: an SD image rebuild or manual system update instructions).
 
+Anki Flashcard Viewer - Update Instructions
+============================================
+
+The Anki Deck Viewer is a Flask web application for studying flashcard decks on Batocera.
+
+**IMPORTANT**: The actual Anki viewer source code is in a separate repository at https://github.com/mbolaris/anki
+This galga-batocera repository only contains deployment scripts and EmulationStation integration.
+
+How to update Anki viewer to the latest version:
+-------------------------------------------------
+
+1. SSH into Batocera (GALAGA - 192.168.1.53):
+   ```bash
+   ssh root@192.168.1.53
+   cd /userdata/roms/anki
+   ```
+
+2. Run the GitHub installer script:
+   ```bash
+   ./install-from-github.sh
+   ```
+
+   This will:
+   - Download the latest version from https://github.com/mbolaris/anki
+   - Create a backup of the existing installation
+   - Install updated files (app.py, anki_viewer/, requirements.txt)
+   - Preserve your deck files in /userdata/roms/anki/decks/
+
+3. After updating, configure the app to use the decks directory:
+   ```bash
+   # Update both startup scripts to use ANKI_DATA_DIR=decks
+   sed -i 's|nohup python -m flask run|nohup env ANKI_DATA_DIR=decks python -m flask run|' dev-restart.sh
+   sed -i 's|nohup python -m flask run|nohup env ANKI_DATA_DIR=decks python -m flask run|' start-anki-viewer.sh
+   ```
+
+4. Restart the Flask application:
+   ```bash
+   ./dev-restart.sh
+   ```
+
+5. Verify the app is running at http://192.168.1.53:5000
+
+Adding deck files:
+------------------
+
+From Windows PC, copy .apkg files to GALAGA:
+```cmd
+scp "path\to\your\deck.apkg" root@192.168.1.53:/userdata/roms/anki/decks/
+```
+
+Then restart Flask to load the new decks:
+```bash
+ssh root@192.168.1.53 "cd /userdata/roms/anki && ./dev-restart.sh"
+```
+
+Files in this repository (galga-batocera):
+------------------------------------------
+
+- share/roms/anki/install-from-github.sh - Script to download and install from https://github.com/mbolaris/anki
+- share/roms/anki/dev-*.sh - Development helper scripts for managing Flask
+- share/roms/anki/start-anki-viewer.sh - Main launcher script
+- share/roms/anki/anki-viewer.sh - EmulationStation launcher
+- share/system/configs/emulationstation/es_systems_anki.cfg - ES system definition
+- deploy-anki-from-github.bat - Windows script to deploy from GitHub
+- deploy-quick.bat - Windows script for quick local file deployment
+
+**DO NOT** manually edit app.py or anki_viewer/ files in this repo - those are outdated stubs.
+Always update from the official source at https://github.com/mbolaris/anki
+
 Contact
 - Repository owner: mbolaris

@@ -2,7 +2,10 @@
 
 A polished Flask web application for viewing Anki flashcard decks on Batocera Linux.
 
-**Source**: https://github.com/mbolaris/anki
+**IMPORTANT**: This directory contains deployment scripts only. The actual application source code is at:
+**https://github.com/mbolaris/anki**
+
+To install/update the app, run: `./install-from-github.sh` (see instructions below)
 
 ## Features
 
